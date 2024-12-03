@@ -1,31 +1,54 @@
 #include <stdlib.h>
 
+// declaración de potenciometros //
+
 #define POTE_ROJO A0
 #define POTE_VERDE A1
 #define POTE_AZUL A2
 
+// declaración de botones //
+
 #define BOTON_INICIO 3
 #define BOTON_PISTA 2
+
+// declaración de pines controladores de cada color //
 
 #define PIN_LED_R 11
 #define PIN_LED_A 10
 #define PIN_LED_V 9
 
+// declaración de tiempos //
+
 #define TIEMPO_PISTA 2000
 #define TIEMPO_PRESENTACION 3000
 
+// tiempo de juego y margen que cambian respecto del nivel //
 
 unsigned long tiempo_juego;
 int margen;
+
+// variables de tiempo // 
 
 unsigned long cronometro;
 unsigned long pista;
 unsigned long tiempo_cero;
 unsigned long tiempo_pista;
 
+// declaración de colores objetivo //
+
 int rojo_obj;
 int verde_obj;
 int azul_obj;
+
+// variables para el debounce //
+
+int ant_boton = 0;
+int estado_boton;
+
+unsigned long tiempo_flanco = 100;
+unsigned long millis_boton = 0;
+
+// variable de nivel y booleano para ganar/perder //
 
 int nivel;
 
@@ -46,9 +69,6 @@ void setup() {
   pinMode(PIN_LED_V, OUTPUT);
 
   randomSeed(analogRead(4));
-
-
-  Serial.begin(9600);
   
 }
 
@@ -62,47 +82,66 @@ void loop() {
 
   int inicio = digitalRead(BOTON_INICIO);
 
-  if (inicio == 1) {
+  if (inicio != ant_boton) {
 
-    while (nivel < 4) {
+    millis_boton = millis();
+  
+  }
 
-      rojo_obj = random(255);
-      azul_obj = random(255);
-      verde_obj = random(255);
+  if ((millis() - millis_boton) > tiempo_flanco) {
 
-      presentacion();
+    if (inicio != estado_boton) {
 
-      Serial.println(rojo_obj);
-      Serial.println(azul_obj);
-      Serial.println(verde_obj);
+      estado_boton = inicio;
 
-      juego();
+      if (estado_boton == HIGH) {
 
-      if (win == true) {
-
-        cronometro = 0;
-        tiempo_cero = 0;
-
-        ganar();
-        nivel += 1;
-
-
-      } else {
-
-        perder();
-        break;
+        while (nivel < 4) {
+    
+          rojo_obj = random(255);
+          azul_obj = random(255);
+          verde_obj = random(255);
+    
+          presentacion();
+    
+          Serial.println(rojo_obj);
+          Serial.println(azul_obj);
+          Serial.println(verde_obj);
+    
+          juego();
+    
+          if (win == true) {
+    
+            cronometro = 0;
+            tiempo_cero = 0;
+    
+            ganar();
+            nivel += 1;
+    
+    
+          } else {
+            
+            cronometro = 0;
+            tiempo_cero = 0;
+            perder();
+            nivel = 5;
+            
+          }
+       }
+        if (nivel >= 4) {
+    
+          fiestita();
+    
+        }
       }
     }
-    if (nivel >= 4) {
-
-      fiestita();
-
-    }
   }
+  ant_boton = inicio;
 }
 
-void presentacion() {
+// declaración de dificultad y muestra de color objetivo  //
 
+void presentacion() {
 
   switch (nivel) {
 
@@ -189,9 +228,12 @@ void presentacion() {
     analogWrite(PIN_LED_R, rojo_obj);
     analogWrite(PIN_LED_A, azul_obj);
     analogWrite(PIN_LED_V, verde_obj);
+    
   }
 }
 
+
+// juego en sí junto con el botón de pista //
 
 bool juego() {
 
@@ -226,25 +268,42 @@ bool juego() {
       }
     }
 
-    if (boton == 1) {
+    if (boton != ant_boton) {
 
-      tiempo_pista = millis();
-
-      while (pista < TIEMPO_PISTA) {
-
-        pista = millis() - tiempo_pista;
-
-        analogWrite(PIN_LED_R, rojo_obj);
-        analogWrite(PIN_LED_A, azul_obj);
-        analogWrite(PIN_LED_V, verde_obj);
-
-      }
-
-      pista = 0;
-
+      millis_boton = millis();
+      
     }
+
+    if ((millis() - millis_boton) > tiempo_flanco) {
+
+      if (boton != estado_boton) {
+
+        estado_boton = boton;
+
+        if (estado_boton == HIGH) {
+
+          tiempo_pista = millis();
+
+          while (pista < TIEMPO_PISTA) {
+    
+            pista = millis() - tiempo_pista;
+    
+            analogWrite(PIN_LED_R, rojo_obj);
+            analogWrite(PIN_LED_A, azul_obj);
+            analogWrite(PIN_LED_V, verde_obj);
+    
+          }
+          pista = 0;
+        }
+      }
+    }
+    ant_boton = boton;
   }
 }
+
+
+
+// Juegos de luces //
 
 void ganar() {
 
